@@ -1,21 +1,11 @@
 import webview from "@suchipi/webview"; // Import the webview module
 import { spawn } from "child_process"; // Import the spawn function from child_process
 
-// webview is an object with this shape:
-// {
-//   binaryPath: string, // The absolute path to the binary for your platform
-//   optionsToArgv: Function, // Convert an options object to the appropriate argv to pass to the binary
-//   spawn: Function, // use child_process.spawn to run the binary
-//   spawnSync: Function, // use child_process.spawnSync to run the binary
-//   exec: Function, // use child_process.execFile to run the binary
-//   execSync: Function, // use child_process.execFileSync to run the binary
-// }
-
-// You can either use webview.binaryPath and webview.optionsToArgv to spawn it yourself:
-const child1 = spawn(
+// Spawn the webview process
+const child = spawn(
   webview.binaryPath,
   webview.optionsToArgv({
-    title: "My App !",
+    title: "My App",
     width: 1024,
     height: 768,
     dir: process.cwd() + "/public",
@@ -25,15 +15,37 @@ const child1 = spawn(
   }
 );
 
-// or you can use the provided helper functions to spawn it using child_process.
-// Note that the helper function accepts webview options and spawn options in the same object.
-const child2 = webview.spawn({
-  // options for webview
-  title: "My App ??",
-  width: 1024,
-  height: 768,
-  dir: process.cwd() + "/public",
+// Listen for incoming messages from the webview process
+child.stdout.on("data", (data) => {
+  const message = data.toString().trim();
+  console.log("Received message from webview:", message);
 
-  // options for child_process.spawn
-  cwd: process.cwd(),
+  if (message.startsWith("runCommand:")) {
+    const command = message.split(":")[1];
+    console.log("Executing command:", command);
+    // Execute the command here, and send results back if needed
+    executeCommand(command)
+      .then((result) => {
+        // Send result back to the webview
+        child.stdin.write(`commandResult:${result}\n`); // Adjust based on your output needs
+      })
+      .catch((error) => {
+        child.stdin.write(`commandResult:${error.message}\n`); // Handle errors
+      });
+  }
 });
+
+// Keep the process alive
+child.on("exit", (code) => {
+  console.log(`Webview exited with code ${code}`);
+});
+
+// Mock function to execute commands
+async function executeCommand(command) {
+  // Here you would handle executing the command
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(`Executed: ${command}`);
+    }, 1000);
+  });
+}

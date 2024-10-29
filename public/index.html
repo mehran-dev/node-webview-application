@@ -3,10 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Simple Node.js UI</title>
+    <title>My Desktop App</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      h1 {
+        color: #fcf;
+      }
+      #result {
+        margin-top: 20px;
+        white-space: pre-wrap; /* Preserve formatting for multi-line output */
+      }
+    </style>
+    <script>
+      // Function to send command to server
+      function handleClick() {
+        const command = "echo Hello World"; // Change this to any command
+        window.postMessage(`runCommand:${command}`, "*"); // Use postMessage to send data
+        alert("Command sent");
+      }
+
+      // Listen for messages from the server
+      window.addEventListener("message", (event) => {
+        const message = event.data;
+        if (message.startsWith("commandResult:")) {
+          const result = message.split(":")[1];
+          document.getElementById("result").innerText = result;
+        }
+      });
+    </script>
   </head>
   <body>
-    <h1>Hello from Node.js!</h1>
-    <p>This is a simple UI using Webview and Express.</p>
+    <h1>Welcome to My Desktop App!</h1>
+    <button onclick="handleClick()">Run Command</button>
+    <div id="result"></div>
   </body>
 </html>
