@@ -7,36 +7,104 @@
     <style>
       body {
         font-family: Arial, sans-serif;
+        color: white;
+        padding: 20px;
       }
       h1 {
-        color: #fcf;
+        color: #61dafb;
       }
       #result {
         margin-top: 20px;
         white-space: pre-wrap; /* Preserve formatting for multi-line output */
+        padding: 10px;
+        border-radius: 5px;
+      }
+      #logger {
+        margin-top: 20px;
+        width: 100%;
+        height: 150px;
+        background-color: #222;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 5px;
+        resize: none; /* Prevent resizing */
+        overflow-y: scroll; /* Enable scrolling */
       }
     </style>
     <script>
-      // Function to send command to server
-      function handleClick() {
-        const command = "echo Hello World"; // Change this to any command
-        window.postMessage(`runCommand:${command}`, "*"); // Use postMessage to send data
-        alert("Command sent");
+      if (!window.fetch) {
+        window.fetch = function (url, options) {
+          return new Promise(function (resolve, reject) {
+            const xhr = new XMLHttpRequest();
+            const method = (options && options.method) || "GET";
+            xhr.open(method, url);
+
+            // Set headers if provided
+            if (options && options.headers) {
+              for (const key in options.headers) {
+                xhr.setRequestHeader(key, options.headers[key]);
+              }
+            }
+
+            xhr.onload = function () {
+              const response = {
+                ok: xhr.status >= 200 && xhr.status < 300,
+                status: xhr.status,
+                statusText: xhr.statusText,
+                text: function () {
+                  return Promise.resolve(xhr.responseText);
+                },
+                json: function () {
+                  return Promise.resolve(JSON.parse(xhr.responseText));
+                },
+              };
+              resolve(response);
+            };
+
+            xhr.onerror = function () {
+              reject(new Error("Network error"));
+            };
+
+            xhr.send(options ? options.body : null);
+          });
+        };
+      }
+      function xlog(data) {
+        const putEl = document.getElementById("logger");
+        // Append new log entries to the existing content
+        putEl.value += JSON.stringify(data) + "\n";
+        putEl.scrollTop = putEl.scrollHeight; // Auto-scroll to the bottom
       }
 
-      // Listen for messages from the server
-      window.addEventListener("message", (event) => {
-        const message = event.data;
-        if (message.startsWith("commandResult:")) {
-          const result = message.split(":")[1];
-          document.getElementById("result").innerText = result;
+      async function handleClick() {
+        const command = "echo Hello World"; // Change to your command
+
+        try {
+          const response = await fetch("http://localhost:8080/run-command", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ command }),
+          });
+
+          const data = await response.json();
+          if (response.ok) {
+            document.getElementById("result").innerText = data.result;
+          } else {
+            xlog(data.error);
+          }
+        } catch (error) {
+          xlog(error.message);
         }
-      });
+      }
     </script>
   </head>
   <body>
     <h1>Welcome to My Desktop App!</h1>
     <button onclick="handleClick()">Run Command</button>
     <div id="result"></div>
+    <textarea id="logger"></textarea>
   </body>
 </html>
